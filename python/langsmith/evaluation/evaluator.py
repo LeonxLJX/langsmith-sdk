@@ -99,6 +99,25 @@ class EvaluationResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    @model_validator(mode="before")
+    @classmethod
+    def warn_unknown_feedback_config_keys(cls, data: Any) -> Any:
+        """Warn when feedback_config contains unknown keys that will be silently dropped."""
+        if isinstance(data, dict):
+            fc = data.get("feedback_config")
+            if isinstance(fc, dict):
+                known_keys = set(FeedbackConfig.__annotations__.keys())
+                unknown_keys = set(fc.keys()) - known_keys
+                if unknown_keys:
+                    logger.warning(
+                        "feedback_config contains unknown keys which will be "
+                        f"silently dropped by FeedbackConfig validation: "
+                        f"{sorted(unknown_keys)}. Known keys are: "
+                        f"{sorted(known_keys)}. If you need arbitrary dict storage, "
+                        "consider using the `metadata` field instead."
+                    )
+        return data
+
     @model_validator(mode="after")
     def check_value_non_numeric(self) -> EvaluationResult:
         """Warn when numeric values are passed via the `value` field."""
